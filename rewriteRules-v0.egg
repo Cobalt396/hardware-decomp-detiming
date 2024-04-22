@@ -1,0 +1,103 @@
+(datatype Net
+          (Var String)
+          (Not Net)
+          (Gate)
+		  (Reg i64)
+		  (Wire String)
+          (Overlay Net Net)
+          (Connect Net Net))
+
+;; --- Overlay ---
+;; Commutativity:
+;;   G1 + G2 ~~> G2 + G1
+(rewrite (Overlay G1 G2) (Overlay G2 G1))
+;; Associativity:
+;;   (G1 + G2) + G3 ~~> G1 + (G2 + G3)
+(rewrite (Overlay (Overlay G1 G2) G3)
+         (Overlay G1 (Overlay G2 G3)))
+
+;; --- Connect ---
+;; Associativity: 
+;;   (G1 -> G2) -> G3 ~~> G1 -> (G2 -> G3)
+(rewrite (Connect (Connect G1 G2) G3)
+         (Connect G1 (Connect G2 G3)))
+
+;; Left and right distributivity:
+;;   G1 -> (G2 + G3) ~~> (G1 -> G2) + (G1 -> G3)
+(rewrite (Connect G1 (Overlay G2 G3))
+        (Overlay (Connect G1 G2) (Connect G1 G3)))
+;;   (G1 + G2) -> G3 ~~> (G1 -> G3) + (G2 -> G3)
+(rewrite (Connect (Overlay G1 G2) G3)
+        (Overlay (Connect G1 G3) (Connect G2 G3)))
+
+
+;; Basic forward and backward retiming rules:
+;;
+;;  a b            a       b
+;;  │ │            │       │   
+;;┌─▼─▼─┐       ┌──▼──┐ ┌──▼──┐
+;;│combo│  ~~>  │ reg │ │ reg │
+;;└──┬──┘       └──┬──┘ └──┬──┘
+;;   │             └──┐ ┌──┘   
+;;┌──▼──┐           ┌─▼─▼─┐   
+;;│ reg │  <~~      │combo│
+;;└──┬──┘           └──┬──┘
+;;   ▼                 ▼   
+;;                    
+;; As an algebraic graph expression:
+;;                          ~~>
+;; ((a + b) -> Gate) -> Reg     ((a -> Reg) + (b -> Reg)) -> Gate
+;;     <~~
+
+;;Rewrite for pushing two registers through a gate (one output)
+(rewrite 
+           (Connect (Overlay (Connect A (Reg N)) (Connect B (Reg N))) (Gate))
+  	(Connect (Connect (Overlay A B) (Gate)) (Reg N))
+ )
+
+;; Rewrite for pushing a register through a gate where there are 2 wires on one side, and 3 on the other
+(rewrite
+			(Connect (Overlay (Overlay (Connect A (Reg N)) (Connect B (Reg N))) (Connect C (Reg N))) (Gate))
+ 	(Connect (Connect (Overlay (Overlay A B) C) (Gate)) (Overlay (Reg N) (Reg N)))
+)
+
+;;Rewrite for pushing one register through a gate (one output)
+(rewrite
+ 			(Connect(Connect A (Reg N)) (Gate))
+ 	(Connect(Connect A (Gate)) (Reg N))
+)
+
+;;Rewrite for pushing a register through a gate when there are multiple registers in a row
+(rewrite
+			(Connect(Connect (Reg N) (Reg N)) (Gate))
+	(Connect(Connect (Reg N) (Gate)) (Reg N))
+)
+
+;; c0: ((a -> Reg) + (b -> Reg)) -> Gate
+;;(let c0
+;;  (Connect
+;;    (Overlay (Connect (Var "a") (Reg 0))
+;;	         (Connect (Var "b") (Reg 0)))
+;;	(Gate)))
+
+;;(let c1
+;;  (Connect 
+;;   	(Overlay (Overlay (Connect (Var "a") (Reg 1)) (Connect (Var "b") (Reg 1))) 
+;;             (Connect (Var "c") (Reg 1))) (Gate))
+;;  )
+
+;;(let c2
+;;	(Connect (Overlay (Connect (Connect (Connect (Var "a") (Reg 0)) (Gate)) (Gate)) (Connect (Connect (Overlay ;;(Connect (Var "b") (Reg 0)) (Connect (Var "c") (Reg 0))) (Gate)) (Gate))) (Gate))
+;;)
+
+;;(let c3
+;;	(Connect (Overlay (Connect (Connect (Connect (Var "a") (Connect (Reg 0) (Reg 0))) (Gate)) (Gate)) (Connect ;;(Connect (Overlay (Connect (Var "b") (Reg 0)) (Connect (Var "c") (Reg 0))) (Gate)) (Gate))) (Gate))
+;;)
+
+
+(run 5)
+
+;;(extract c3)
+
+;;(check (= c0
+  ;;        (Connect (Connect (Overlay (Var "a") (Var "b")) (Gate)) (Reg 0))))
