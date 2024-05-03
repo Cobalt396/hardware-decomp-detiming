@@ -1,0 +1,66 @@
+(datatype Net
+          (Var String)
+          (Not Net)
+          (Gate)
+		  (Reg i64)
+		  (Wire String)
+          (Overlay Net Net)
+          (Connect Net Net))
+
+;; --- Overlay ---
+;; Commutativity:
+;;   G1 + G2 ~~> G2 + G1
+(rewrite (Overlay G1 G2) (Overlay G2 G1))
+;; Associativity:
+;;   (G1 + G2) + G3 ~~> G1 + (G2 + G3)
+(rewrite (Overlay (Overlay G1 G2) G3)
+         (Overlay G1 (Overlay G2 G3)))
+
+;; --- Connect ---
+;; Associativity: 
+;;   (G1 -> G2) -> G3 ~~> G1 -> (G2 -> G3)
+(rewrite (Connect (Connect G1 G2) G3)
+         (Connect G1 (Connect G2 G3)))
+
+;; Left and right distributivity:
+;;   G1 -> (G2 + G3) ~~> (G1 -> G2) + (G1 -> G3)
+(rewrite (Connect G1 (Overlay G2 G3))
+        (Overlay (Connect G1 G2) (Connect G1 G3)))
+;;   (G1 + G2) -> G3 ~~> (G1 -> G3) + (G2 -> G3)
+(rewrite (Connect (Overlay G1 G2) G3)
+        (Overlay (Connect G1 G3) (Connect G2 G3)))
+
+
+;; Basic forward and backward retiming rules:
+;;
+;;  a b            a       b
+;;  │ │            │       │   
+;;┌─▼─▼─┐       ┌──▼──┐ ┌──▼──┐
+;;│combo│  ~~>  │ reg │ │ reg │
+;;└──┬──┘       └──┬──┘ └──┬──┘
+;;   │             └──┐ ┌──┘   
+;;┌──▼──┐           ┌─▼─▼─┐   
+;;│ reg │  <~~      │combo│
+;;└──┬──┘           └──┬──┘
+;;   ▼                 ▼   
+;;                    
+;; As an algebraic graph expression:
+;;                          ~~>
+;; ((a + b) -> Gate) -> Reg     ((a -> Reg) + (b -> Reg)) -> Gate
+;;     <~~
+
+;;Rewrite for pushing two registers through a gate (one output)
+(rewrite 
+           (Connect (Overlay (Connect A (Reg N)) (Connect B (Reg N))) (Gate))
+  	(Connect (Connect (Overlay A B) (Gate)) (Reg N))
+ ) 
+
+;;Rewrite for pushing one register through a gate (one output)
+;;Note that for multiple in-line registers, the rewrites expect Connects to be done left to right in order to properly apply these rules 
+;;(Associativity rewrites don't seem to be applying)
+(rewrite
+ 			(Connect(Connect A (Reg N)) (Gate))
+ 	(Connect(Connect A (Gate)) (Reg N))
+)
+
+(run 1)
