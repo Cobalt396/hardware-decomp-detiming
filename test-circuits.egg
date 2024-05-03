@@ -70,13 +70,14 @@
 ;;)
 
 ;; c4: a -> Reg -> Reg -> Gate
-(let c4
-  	(Connect (Connect (Connect (Connect (Var "a") (Reg 0)) (Reg 0)) (Reg 0)) (Gate))
-  )
+;;(let c4
+;;  	(Connect (Connect (Connect (Connect (Var "a") (Reg 0)) (Reg 0)) (Reg 0)) (Gate))
+;;  )
 
 (run 6)
 
-;;(extract c4)
+;;(check (= c3
+;;        (Connect (Connect (Overlay (Connect (Var "a") (Gate)) (Connect (Connect (Overlay (Var "b") (Var "c")) (Gate)) (Gate))) (Gate)) (Reg 0))))
 
-(check (= c4
-          (Connect (Connect (Connect (Connect (Var "a") (Gate)) (Reg 0)) (Reg 0)) (Reg 0))))
+;;(check (= c4
+;;          (Connect (Connect (Connect (Connect (Var "a") (Gate)) (Reg 0)) (Reg 0)) (Reg 0))))
