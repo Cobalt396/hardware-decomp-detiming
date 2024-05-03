@@ -30,25 +30,7 @@
 (rewrite (Connect (Overlay G1 G2) G3)
         (Overlay (Connect G1 G3) (Connect G2 G3)))
 
-
-;; Basic forward and backward retiming rules:
-;;
-;;  a b            a       b
-;;  │ │            │       │   
-;;┌─▼─▼─┐       ┌──▼──┐ ┌──▼──┐
-;;│combo│  ~~>  │ reg │ │ reg │
-;;└──┬──┘       └──┬──┘ └──┬──┘
-;;   │             └──┐ ┌──┘   
-;;┌──▼──┐           ┌─▼─▼─┐   
-;;│ reg │  <~~      │combo│
-;;└──┬──┘           └──┬──┘
-;;   ▼                 ▼   
-;;                    
-;; As an algebraic graph expression:
-;;                          ~~>
-;; ((a + b) -> Gate) -> Reg     ((a -> Reg) + (b -> Reg)) -> Gate
-;;     <~~
-
+;; --- Pushing Registers ---
 ;;Rewrite for pushing two registers through a gate (one output)
 (rewrite 
            (Connect (Overlay (Connect A (Reg N)) (Connect B (Reg N))) (Gate))
