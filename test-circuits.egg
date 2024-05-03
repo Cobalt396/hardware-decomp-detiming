@@ -10,36 +10,36 @@
 ;; --- Overlay ---
 ;; Commutativity:
 ;;   G1 + G2 ~~> G2 + G1
-(rewrite (Overlay G1 G2) (Overlay G2 G1))
+(birewrite (Overlay G1 G2) (Overlay G2 G1))
 ;; Associativity:
 ;;   (G1 + G2) + G3 ~~> G1 + (G2 + G3)
-(rewrite (Overlay (Overlay G1 G2) G3)
+(birewrite (Overlay (Overlay G1 G2) G3)
          (Overlay G1 (Overlay G2 G3)))
 
 ;; --- Connect ---
 ;; Associativity: 
 ;;   (G1 -> G2) -> G3 ~~> G1 -> (G2 -> G3)
-(rewrite (Connect (Connect G1 G2) G3)
+(birewrite (Connect (Connect G1 G2) G3)
          (Connect G1 (Connect G2 G3)))
 
 ;; Left and right distributivity:
 ;;   G1 -> (G2 + G3) ~~> (G1 -> G2) + (G1 -> G3)
-(rewrite (Connect G1 (Overlay G2 G3))
+(birewrite (Connect G1 (Overlay G2 G3))
         (Overlay (Connect G1 G2) (Connect G1 G3)))
 ;;   (G1 + G2) -> G3 ~~> (G1 -> G3) + (G2 -> G3)
-(rewrite (Connect (Overlay G1 G2) G3)
+(birewrite (Connect (Overlay G1 G2) G3)
         (Overlay (Connect G1 G3) (Connect G2 G3)))
 
 
 ;; --- Pushing Registers ---
 ;;Rewrite for pushing two registers through a gate (one output)
-(rewrite 
+(birewrite 
            (Connect (Overlay (Connect A (Reg N)) (Connect B (Reg N))) (Gate))
   	(Connect (Connect (Overlay A B) (Gate)) (Reg N))
  )
 
 ;;Rewrite for pushing one register through a gate (one output)
-(rewrite
+(birewrite
  			(Connect(Connect A (Reg N)) (Gate))
  	(Connect(Connect A (Gate)) (Reg N))
 )
