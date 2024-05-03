@@ -1,0 +1,82 @@
+(datatype Net
+          (Var String)
+          (Not Net)
+          (Gate)
+		  (Reg i64)
+		  (Wire String)
+          (Overlay Net Net)
+          (Connect Net Net))
+
+;; --- Overlay ---
+;; Commutativity:
+;;   G1 + G2 ~~> G2 + G1
+(rewrite (Overlay G1 G2) (Overlay G2 G1))
+;; Associativity:
+;;   (G1 + G2) + G3 ~~> G1 + (G2 + G3)
+(rewrite (Overlay (Overlay G1 G2) G3)
+         (Overlay G1 (Overlay G2 G3)))
+
+;; --- Connect ---
+;; Associativity: 
+;;   (G1 -> G2) -> G3 ~~> G1 -> (G2 -> G3)
+(rewrite (Connect (Connect G1 G2) G3)
+         (Connect G1 (Connect G2 G3)))
+
+;; Left and right distributivity:
+;;   G1 -> (G2 + G3) ~~> (G1 -> G2) + (G1 -> G3)
+(rewrite (Connect G1 (Overlay G2 G3))
+        (Overlay (Connect G1 G2) (Connect G1 G3)))
+;;   (G1 + G2) -> G3 ~~> (G1 -> G3) + (G2 -> G3)
+(rewrite (Connect (Overlay G1 G2) G3)
+        (Overlay (Connect G1 G3) (Connect G2 G3)))
+
+
+;; --- Pushing Registers ---
+;;Rewrite for pushing two registers through a gate (one output)
+(rewrite 
+           (Connect (Overlay (Connect A (Reg N)) (Connect B (Reg N))) (Gate))
+  	(Connect (Connect (Overlay A B) (Gate)) (Reg N))
+ )
+
+;;Rewrite for pushing one register through a gate (one output)
+(rewrite
+ 			(Connect(Connect A (Reg N)) (Gate))
+ 	(Connect(Connect A (Gate)) (Reg N))
+)
+
+;; c0: a -> Reg -v
+;;                Gate
+;;     b -> Reg -^
+;;(let c0
+;;  (Connect
+;;    (Overlay (Connect (Var "a") (Reg 0))
+;;	         (Connect (Var "b") (Reg 0)))
+;;	(Gate)))
+
+;; c2: a -> Reg -> Gate -> Gate -v
+;;     b -> Reg -v                 Gate
+;;                 Gate -> Gate -^
+;;     c -> Reg -^
+;;(let c2
+;;	(Connect (Overlay (Connect (Connect (Connect (Var "a") (Reg 0)) (Gate)) (Gate)) (Connect (Connect (Overlay ;;(Connect (Var "b") (Reg 0)) (Connect (Var "c") (Reg 0))) (Gate)) (Gate))) (Gate))
+;;)
+
+;; c3: a -> Reg -> Gate ---------v
+;;     b -> Reg -v                 Gate
+;;                 Gate -> Gate -^
+;;     c -> Reg -^
+;;(let c3
+;;	(Connect (Overlay (Connect (Connect (Var "a") (Reg 0)) (Gate)) (Connect ;;(Connect (Overlay (Connect (Var "b") (Reg 0)) (Connect (Var "c") (Reg 0))) (Gate)) (Gate))) (Gate))
+;;)
+
+;; c4: a -> Reg -> Reg -> Gate
+(let c4
+  	(Connect (Connect (Connect (Connect (Var "a") (Reg 0)) (Reg 0)) (Reg 0)) (Gate))
+  )
+
+(run 6)
+
+;;(extract c4)
+
+(check (= c4
+          (Connect (Connect (Connect (Connect (Var "a") (Gate)) (Reg 0)) (Reg 0)) (Reg 0))))
