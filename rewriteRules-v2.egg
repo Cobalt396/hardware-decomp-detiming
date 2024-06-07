@@ -1,4 +1,9 @@
-Wire String)
+(datatype Net
+          (Var String)
+          (Not Net)
+          (Gate)
+		  (Reg i64)
+		  (Wire String)
           (Overlay Net Net)
           (Connect Net Net))
 
