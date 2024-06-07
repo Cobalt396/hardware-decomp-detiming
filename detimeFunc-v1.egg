@@ -1,0 +1,74 @@
+(datatype Net
+          (Var String)
+          (Not Net)
+          (Gate)
+		  (Reg i64)
+		  (Wire String)
+          (Overlay Net Net)
+          (Connect Net Net))
+
+;; --- Overlay ---
+;; Commutativity:
+;;   G1 + G2 ~~> G2 + G1
+(birewrite (Overlay G1 G2) (Overlay G2 G1))
+;; Associativity:
+;;   (G1 + G2) + G3 ~~> G1 + (G2 + G3)
+(birewrite (Overlay (Overlay G1 G2) G3)
+         (Overlay G1 (Overlay G2 G3)))
+
+;; --- Connect ---
+;; Associativity: 
+;;   (G1 -> G2) -> G3 ~~> G1 -> (G2 -> G3)
+(birewrite (Connect (Connect G1 G2) G3)
+         (Connect G1 (Connect G2 G3)))
+
+;; Left and right distributivity:
+;;   G1 -> (G2 + G3) ~~> (G1 -> G2) + (G1 -> G3)
+(birewrite (Connect G1 (Overlay G2 G3))
+        (Overlay (Connect G1 G2) (Connect G1 G3)))
+;;   (G1 + G2) -> G3 ~~> (G1 -> G3) + (G2 -> G3)
+(birewrite (Connect (Overlay G1 G2) G3)
+        (Overlay (Connect G1 G3) (Connect G2 G3)))
+
+;; --- Pushing Registers ---
+;;Rewrite for pushing two registers through a gate (one output)
+(birewrite 
+           (Connect (Overlay (Connect A (Reg N)) (Connect B (Reg N))) (Gate))
+  	(Connect (Connect (Overlay A B) (Gate)) (Reg N))
+ ) 
+
+;;Rewrite for pushing one register through a gate (one output)
+;;Note that for multiple in-line registers, the rewrites expect Connects to be done left to right in order to properly apply these rules 
+;;(Associativity rewrites don't seem to be applying)
+(birewrite
+ 			(Connect(Connect A (Reg N)) (Gate))
+ 	(Connect(Connect A (Gate)) (Reg N))
+)
+
+;;Function for determining how "detimed" a circuit is
+(function func (Net) i64)
+
+(ruleset func-rules)
+
+(set (func (Reg N)) 0)
+
+(rule ((Var x))
+      (set (func (Gate)) 0))
+
+(rule ((Gate))
+      (= (func (Gate)) ct)
+      (set (func (Gate)) (+ ct 1)))
+
+(rule ((Reg N))
+      (= (func (Gate)) ct)
+      (= (func (Reg N)) sum)
+      (set (func (Reg N)) (+ sum ct)))
+
+;;c1: a -> Gate -> Reg
+(let c1 
+  		(Connect (Connect (Var "a") (Gate)) (Reg 0))
+ )
+
+(run 5)
+
+(check (= (func (Reg 0)) 1))
