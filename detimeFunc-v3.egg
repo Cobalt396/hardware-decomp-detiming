@@ -1,0 +1,113 @@
+(datatype Net
+          (Var String)
+          (Not Net)
+          (Gate)
+		  (Reg i64)
+		  (Wire String)
+          (Overlay Net Net)
+          (Connect Net Net))
+
+(ruleset rewrite-rules)
+;; --- Overlay ---
+;; Commutativity:
+;;   G1 + G2 ~~> G2 + G1
+(birewrite (Overlay G1 G2) (Overlay G2 G1)
+           :ruleset rewrite-rules)
+;; Associativity:
+;;   (G1 + G2) + G3 ~~> G1 + (G2 + G3)
+(birewrite (Overlay (Overlay G1 G2) G3)
+			(Overlay G1 (Overlay G2 G3))
+           :ruleset rewrite-rules)
+
+;; --- Connect ---
+;; Associativity: 
+;;   (G1 -> G2) -> G3 ~~> G1 -> (G2 -> G3)
+(birewrite (Connect (Connect G1 G2) G3)
+		(Connect G1 (Connect G2 G3))
+		:ruleset rewrite-rules)
+
+;; Left and right distributivity:
+;;   G1 -> (G2 + G3) ~~> (G1 -> G2) + (G1 -> G3)
+(birewrite (Connect G1 (Overlay G2 G3))
+        (Overlay (Connect G1 G2) (Connect G1 G3))
+        :ruleset rewrite-rules)
+;;   (G1 + G2) -> G3 ~~> (G1 -> G3) + (G2 -> G3)
+(birewrite (Connect (Overlay G1 G2) G3)
+        (Overlay (Connect G1 G3) (Connect G2 G3))
+        :ruleset rewrite-rules)
+
+;; --- Pushing Registers ---
+;;Rewrite for pushing two registers through a gate (one output)
+(rewrite 
+           (Connect (Connect (Overlay A B) (Gate)) (Reg N))
+  	(Connect (Overlay (Connect A (Reg N)) (Connect B (Reg N))) (Gate))
+ :ruleset rewrite-rules) 
+
+;;Rewrite for pushing one register through a gate (one output)
+;;Note that for multiple in-line registers, the rewrites expect Connects to be done left to right in order to properly apply these rules 
+;;(Associativity rewrites don't seem to be applying)
+(rewrite
+ 			(Connect(Connect A (Gate)) (Reg N))
+ 	(Connect(Connect A (Reg N)) (Gate))
+:ruleset rewrite-rules)
+
+;;Function for determining how "detimed" a circuit is
+(function count (Net) i64)
+(function sum (Net) i64 :default 0)
+
+(ruleset cost-rules)
+
+;;Count rules
+
+(rule ((= e (Connect (Var x) (Gate))))
+      ((set (count e) 1))
+      :ruleset cost-rules)
+
+(rule ((= e (Connect (Var x) (Reg N))))
+      ((set (count e) 0))
+      :ruleset cost-rules)
+
+(rule ((= e (Connect (Overlay (Var x) (Var y)) (Gate))))
+      ((set (count e) 2))
+      :ruleset cost-rules)
+
+(rule ((= e (Connect A (Gate)))
+       (= (count A) e1))
+      ((set (count e) (+ e1 1))
+      (set (sum e) (sum A)))
+      :ruleset cost-rules)
+
+(rule ((= e (Connect (Overlay A B) (Gate)))
+       (= (count A) e1)
+       (= (count B) e2))
+      ((set (count e) (+ (+ e1 e2) 1))
+      (set (sum e) (+ (sum A) (sum B))))
+      :ruleset cost-rules)
+
+;;Sum rules
+
+(rule ((= e (Connect A (Reg N)))
+       (= (count A) e1))
+      ((set (sum e) (+ (sum A) e1))
+      (set (count e) e1))
+      :ruleset cost-rules)
+;;c1: a -> Gate -> Reg
+;;(let c1 
+  ;;		(Connect(Connect (Connect (Var "a") (Gate)) (Reg 0)) (Gate))
+ ;;)
+
+;;(let c2
+  ;;		(Connect(Connect(Overlay (Var "a") (Var "b")) (Gate)) (Reg 0))
+ ;;)
+
+(let c3
+  			(Connect (Connect (Connect (Connect (Connect (Connect (Var "a") (Gate)) (Reg 0)) (Reg 0)) (Reg 0)) (Reg 0)) (Reg 0))
+  )
+
+
+(run-schedule 
+	(repeat 1 (saturate cost-rules))
+    (repeat 1 (saturate rewrite-rules))
+)
+
+(extract (sum c3))
